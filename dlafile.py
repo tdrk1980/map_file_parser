@@ -11,8 +11,8 @@ selflogger.propagate = False
 # - シンボル名(関数名、変数名)
 # - ROM(.text, .rodata) or RAM(.bss, .data)の区別
 # が取得できる。
-# ※ それ以外にも情報はあるが解析の対象にしていない(e.g.関数・変数を定義か or 参照か、変数へのWriteかReadかなど)
-# 
+# ※ それ以外にも情報はとれそうだが調査してないので解析対象にしていない
+# https://www.ibm.com/developerworks/jp/linux/library/l-python-state/index.html
 # dlaファイル自体については、doc/dlafile.md参照 (実装的にはparse関数参照)
 # いくつかの理由で文脈判断やファイル名保持が必要になり、parse関数では状態を持っている。
 # 
@@ -23,8 +23,9 @@ selflogger.propagate = False
 #  ※ xxxx.cに定義されたstatic int aなのか、yyyy.cのstatic int aなのか判別できなくなる。
 
 
-import re
+import ret
 import pathlib
+import transitions
 
 # ファイルセクション(Headerなどのキーワード部分)にマッチする正規表現
 expr_line = r"(?P<file_section>^Actual Calls$|^Auxs$|^Cross References$|^Files$|^Frames$|^Global Symbols$|^Hash Define Hashs$|^Hash Defines$|^Header$|^Include References$|^Procs$|^Static Calls$|^Symbols$|^Typedefs$)"
