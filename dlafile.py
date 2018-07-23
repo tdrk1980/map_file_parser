@@ -1,31 +1,32 @@
 # -*- coding: utf-8 -*--
 
 from logging import getLogger, DEBUG, NullHandler, StreamHandler, FileHandler
+import re
+import types
+import pathlib
+import transitions
+
 selflogger = getLogger(__name__)
 selflogger.setLevel(DEBUG)
 selflogger.addHandler(NullHandler()) # 必要に応じてStremaHandlerなどを設定する
 selflogger.propagate = False
 
-# dlaファイルからは、・・・正確にはgdump.exeにかけてテキスト化したファイル
+### dlaファイルについて
+# dlaファイルからは、
 # - 変数、関数が定義されているファイル名
 # - シンボル名(関数名、変数名)
 # - ROM(.text, .rodata) or RAM(.bss, .data)の区別
-# が取得できる。
-# ※ それ以外にも情報はとれそうだが調査してないので解析対象にしていない
-# https://www.ibm.com/developerworks/jp/linux/library/l-python-state/index.html
-# dlaファイル自体については、doc/dlafile.md参照 (実装的にはparse関数参照)
-# いくつかの理由で文脈判断やファイル名保持が必要になり、parse関数では状態を持っている。
+# が取得できます。
+# ※ 正確にはgdump.exeにかけてテキスト化したファイル
+# ※ それ以外にも情報はとれそうだが調査してない。
 # 
-# - 複数のファイルの情報が結合されていること
-# - 欲しい情報の順序が意図通りではないこと
-#  ※ ファイル名とともにシンボル名がとればいいが、そうなっていない。
-#  ※ たとえば、ファイル名を保持していないと
-#  ※ xxxx.cに定義されたstatic int aなのか、yyyy.cのstatic int aなのか判別できなくなる。
-
-
-import ret
-import pathlib
-import transitions
+# dlaファイルは、ステートフル・テキスト・ファイルなので状態を持って処理する必要があります。
+# ファイル構造や状態の詳細は、doc/dlafile.mdを参照
+# 実装は、parse関数を参照
+# 
+# 参考：テキスト処理用ステート・マシン - IBM
+# https://www.ibm.com/developerworks/jp/linux/library/l-python-state/index.html 
+###
 
 # ファイルセクション(Headerなどのキーワード部分)にマッチする正規表現
 expr_line = r"(?P<file_section>^Actual Calls$|^Auxs$|^Cross References$|^Files$|^Frames$|^Global Symbols$|^Hash Define Hashs$|^Hash Defines$|^Header$|^Include References$|^Procs$|^Static Calls$|^Symbols$|^Typedefs$)"
@@ -208,8 +209,110 @@ def get_isym_reftype(s):
         return None
 
 
-def parse(fname, cb_map=None, cb_sym=None, cb_cref=None):
+def parse(fname, callback_symbol=None, callback_crossref=None, logger=selflogger):
+    r'''
+    テキスト化された.dlaを解析する
+
+    Parameters
+    ----------
+    fname : str
+        テキスト化された.dlaのファイル名
+
+    callback_symbol : function or None
+        シンボル情報を受け取る関数
+
+    callback_crossref : function or None
+        クロスリファレンス情報を受け取る関数(シンボル情報とisymによって結合できる)
+
+    logger : logger
+        デバッグログを出力するloggingモジュールのloggerインスタンス。
+        基本的に設定しなくてOK。設定する場合は以下参照
+        https://qiita.com/amedama/items/b856b2f30c2f38665701
+    Notes
+    -----
+    T.B.D
+
+    Examples
+    -----
+    T.B.D
+    '''
+    # loggerを設定(デフォルトは何も出力しない)
+    log = logger or selflogger
+
+    c_source_file_path = None
     with open(fname, "r") as f:
-        for s in f:
+        cur_state = nxt_state = "init"
+        
+        for i, s in enumerate(f, 1):
+            cur_state = nxt_state
             ev = parse_line(s)
-            print(ev)
+            logger.debug(f"{i}:{s} ==> ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+
+            if cur_state == "init":
+                if ev["file_section_info"] in ["Files"]:
+                    c_source_file_path = None
+                    nxt_state = "parsingFiles"
+                    logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                else:
+                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    pass
+
+            elif cur_state == "parsingFiles":
+                if ev["content_info"]:
+                    c_source_file_path = get_c_source_file_path(ev["param"])
+                    if c_source_file_path:
+                        nxt_state = "joinSymbolsCrossRef"
+                        logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    else:
+                        logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                        pass
+                else:
+                    nxt_state = "init"
+                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+
+            elif cur_state in ["joinSymbolsCrossRef"]:
+                if ev["file_section_info"] in ["Symbols", "Global Symbols"]:
+                    nxt_state = "parseSymbols"
+                    logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                elif ev["file_section_info"] in ["Cross References"]:
+                    nxt_state = "parseCrossReferences"
+                    logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                elif ev["file_section_info"] in ["Header"]:
+                    nxt_state = "init"
+                    logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                else:
+                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    pass
+
+            elif cur_state in ["parseSymbols"]:
+                if ev["content_info"]:
+                    sym = get_variable_symbol_info(ev["content_info"])
+                    if sym:
+                        symdic = {"file":c_source_file_path, "name":sym["name"], "addr": sym["addr"], "isym":sym["isym"], "scope": sym["scope"], "sect": sym["sect"]}
+                        callback_symbol(symdic) if isinstance(callback_symbol, types.FunctionType) else None
+                        logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}, symdic={symdic}")
+                    else:
+                        logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                        pass
+                elif ev["file_section_info"] in ["Symbols", "Global Symbols"]:
+                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    pass
+                elif ev["file_section_info"] in ["Header"]:
+                    nxt_state = "init"
+                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                else:
+                    nxt_state = "joinSymbolsCrossRef"
+                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+
+            elif cur_state in ["parseCrossReferences"]:
+                if ev["content_info"]:
+                    cr = get_isym_reftype(ev["content_info"])
+                    if cr:
+                        crdic = {"file":c_source_file_path, "isym": cr["isym"], "reftype": cr["reftype"], "ifile": cr["file"], "line": cr["line"], "col": cr["col"]}
+                        callback_crossref(crdic) if isinstance(callback_crossref, types.FunctionType) else None
+                        logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}, crdic={crdic}")
+                    else:
+                        logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                else:
+                    nxt_state = "init"
+                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
