@@ -75,7 +75,7 @@ def create_database(map_fname, dla_fname, db_name="test.sqlite3"):
     db.close_sessoin()
 
 if __name__ == '__main__':
-    create_database("DMS_Sub_Appl_1.map", "dmsdla.txt")
+    create_database("map.map", "dla.txt")
 
 
 # In [8]: %time show_memory.create_database("DMS_Sub_Appl_1.map", "dmsdla.txt")
