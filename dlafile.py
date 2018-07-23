@@ -4,7 +4,7 @@ from logging import getLogger, DEBUG, NullHandler, StreamHandler, FileHandler
 import re
 import types
 import pathlib
-import transitions
+# import transitions # 将来的に利用するかも
 
 selflogger = getLogger(__name__)
 selflogger.setLevel(DEBUG)
@@ -246,42 +246,42 @@ def parse(fname, callback_symbol=None, callback_crossref=None, logger=selflogger
         for i, s in enumerate(f, 1):
             cur_state = nxt_state
             ev = parse_line(s)
-            logger.debug(f"{i}:{s} ==> ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+            log.debug(f"{i}:{s} ==> ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
 
             if cur_state == "init":
                 if ev["file_section_info"] in ["Files"]:
                     c_source_file_path = None
                     nxt_state = "parsingFiles"
-                    logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    log.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
                 else:
-                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    log.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
                     pass
 
             elif cur_state == "parsingFiles":
                 if ev["content_info"]:
-                    c_source_file_path = get_c_source_file_path(ev["param"])
+                    c_source_file_path = get_c_source_file_path(ev["content_info"])
                     if c_source_file_path:
                         nxt_state = "joinSymbolsCrossRef"
-                        logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                        log.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
                     else:
-                        logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                        log.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
                         pass
                 else:
                     nxt_state = "init"
-                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    log.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
 
             elif cur_state in ["joinSymbolsCrossRef"]:
                 if ev["file_section_info"] in ["Symbols", "Global Symbols"]:
                     nxt_state = "parseSymbols"
-                    logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    log.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
                 elif ev["file_section_info"] in ["Cross References"]:
                     nxt_state = "parseCrossReferences"
-                    logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    log.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
                 elif ev["file_section_info"] in ["Header"]:
                     nxt_state = "init"
-                    logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    log.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
                 else:
-                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    log.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
                     pass
 
             elif cur_state in ["parseSymbols"]:
@@ -290,19 +290,19 @@ def parse(fname, callback_symbol=None, callback_crossref=None, logger=selflogger
                     if sym:
                         symdic = {"file":c_source_file_path, "name":sym["name"], "addr": sym["addr"], "isym":sym["isym"], "scope": sym["scope"], "sect": sym["sect"]}
                         callback_symbol(symdic) if isinstance(callback_symbol, types.FunctionType) else None
-                        logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}, symdic={symdic}")
+                        log.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}, symdic={symdic}")
                     else:
-                        logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                        log.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
                         pass
                 elif ev["file_section_info"] in ["Symbols", "Global Symbols"]:
-                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    log.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
                     pass
                 elif ev["file_section_info"] in ["Header"]:
                     nxt_state = "init"
-                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    log.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
                 else:
                     nxt_state = "joinSymbolsCrossRef"
-                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    log.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
 
             elif cur_state in ["parseCrossReferences"]:
                 if ev["content_info"]:
@@ -310,9 +310,32 @@ def parse(fname, callback_symbol=None, callback_crossref=None, logger=selflogger
                     if cr:
                         crdic = {"file":c_source_file_path, "isym": cr["isym"], "reftype": cr["reftype"], "ifile": cr["file"], "line": cr["line"], "col": cr["col"]}
                         callback_crossref(crdic) if isinstance(callback_crossref, types.FunctionType) else None
-                        logger.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}, crdic={crdic}")
+                        log.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}, crdic={crdic}")
                     else:
-                        logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                        log.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
                 else:
                     nxt_state = "init"
-                    logger.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+                    log.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
+
+if __name__ == '__main__':
+    # 引数の解析
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument("file", help="解析するdlaファイル",  type=str, nargs=1)
+    args = parser.parse_args()
+
+    # デバッグログ出力の設定
+    from logging import getLogger, DEBUG, StreamHandler
+    logger = getLogger("test")
+    logger.addHandler(StreamHandler())
+    logger.setLevel(DEBUG)
+    logger.propagate = False
+
+    def symbol(item):
+        print(item)
+
+    def crossref(item):
+        print(item)
+
+    # 解析開始
+    parse(args.file[0], callback_symbol=symbol, callback_crossref=crossref, logger=None)
