@@ -127,7 +127,7 @@ def get_variable_symbol_info(s):
     -------
     variable_symbol_info : dict or None
         変数シンボル情報が見つかった場合は、以下のdictを返す。見つからなかった場合はNoneを返す
-        {"addr":str, "isym":str, "name":str, "scope":str, "sect":str}
+        {"addr":int, "isym":int, "name":str, "scope":str, "sect":str}
 
     Notes
     -----
@@ -156,7 +156,7 @@ def get_variable_symbol_info(s):
     '''
     m = re_variable_symbol_info.search(s)
     if m:
-        return {"name": m.group("name"), "isym": m.group("isym"), "addr": m.group("addr"), "scope": m.group("scope"), "sect": m.group("sect")}
+        return {"addr": int(m.group("addr"),16), "isym": int(m.group("isym"),16), "name": m.group("name"), "scope": m.group("scope"), "sect": m.group("sect")}
     else:
         return None
 
@@ -178,7 +178,7 @@ def get_isym_reftype(s):
     -------
     isym_reftype : dict or None
         シンボルリファレンス情報が見つかった場合は、以下のdictを返す。見つからなかった場合はNoneを返す。
-        {"col": str, "file": str, "isym": str, "line": str, "reftype": str}
+        {"col": int, "file": str, "isym": int, "line": int, "reftype": str}
 
     Notes
     -----
@@ -204,12 +204,12 @@ def get_isym_reftype(s):
     '''
     m = re_isym_reftype.search(s)
     if m:
-        return {"isym": m.group("isym"), "reftype": m.group("reftype"), "file": m.group("file"), "line": m.group("line"), "col": m.group("col")}
+        return {"col": int(m.group("col")), "file": m.group("file"), "isym": int(m.group("isym")), "line": int(m.group("line")), "reftype": m.group("reftype") }
     else:
         return None
 
 
-def parse(fname, callback_symbol=None, callback_crossref=None, logger=selflogger):
+def parse(fname, encoding="utf-8", callback_symbol=None, callback_crossref=None, logger=selflogger):
     r'''
     テキスト化された.dlaを解析する
 
@@ -240,7 +240,7 @@ def parse(fname, callback_symbol=None, callback_crossref=None, logger=selflogger
     log = logger or selflogger
 
     c_source_file_path = None
-    with open(fname, "r") as f:
+    with open(fname, "r", encoding=encoding) as f:
         cur_state = nxt_state = "init"
         
         for i, s in enumerate(f, 1):

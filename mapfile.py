@@ -9,7 +9,7 @@ selflogger.propagate = False
 import re
 import types
 
-def parse(fname, callback=None, logger=None):
+def parse(fname, encoding="utf-8", callback=None, logger=None):
     r'''
     正規表現を利用して、マップファイルを解析する関数
 
@@ -56,7 +56,7 @@ def parse(fname, callback=None, logger=None):
     # 利用する正規表現をコンパイルしておく
     expr = re.compile(r"(?P<section>\S+?) +(?P<addr>[0-9A-Fa-f]{8})\+(?P<size>[0-9A-Fa-f]{6}) (?P<sym>\S+)")
 
-    with open(fname) as f:
+    with open(fname, "r", encoding=encoding) as f:
         for s in f:
             s = s.strip()
 
@@ -66,13 +66,13 @@ def parse(fname, callback=None, logger=None):
                 # マッチしたものからセクション、アドレスなどを抜き出す
                 section = m.group("section")
                 size = int(m.group("size"),16)
-                addr = "0x" + m.group("addr")
+                addr = int("0x" + m.group("addr"),16)
                 sym = m.group("sym")
                 ret = {"section":section, "addr": addr, "size":size, "sym":sym}
                 
                 # sizeが0より大きいものをコールバックする 
                 if size > 0:
-                    callback(ret) if isinstance(f, types.FunctionType) else None
+                    callback(ret) if isinstance(callback, types.FunctionType) else None
                     log.info(ret)
                 else:
                     log.debug("size <= 0, ignored !! : " + str(ret))
