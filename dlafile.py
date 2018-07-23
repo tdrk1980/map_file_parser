@@ -163,7 +163,7 @@ def get_variable_symbol_info(s):
 
 
 # Cross Referencesセクションのシンボルリファレンス情報を取得するための正規表現
-expr_isym_reftype = r"^\d+?: *iSym:(?P<isym>\d+?) *reftype:(?P<reftype>.+?) file:(?P<file>\d+?) line:(?P<line>\d+?) col:(?P<col>\d+?)"
+expr_isym_reftype = r"^\d+?: *iSym:(?P<isym>\d+?) *reftype:(?P<reftype>.+?) file:(?P<file>\d+?) line:(?P<line>\d+?) col:(?P<col>\d+)"
 re_isym_reftype = re.compile(expr_isym_reftype)
 
 def get_isym_reftype(s):
@@ -183,7 +183,7 @@ def get_isym_reftype(s):
     Notes
     -----
     利用する正規表現
-    ^\d+?: *iSym:(?P<isym>\d+?) *reftype:(?P<reftype>.+?) file:(?P<file>\d+?) line:(?P<line>\d+?) col:(?P<col>\d+?)
+    ^\d+?: *iSym:(?P<isym>\d+?) *reftype:(?P<reftype>.+?) file:(?P<file>\d+?) line:(?P<line>\d+?) col:(?P<col>\d+)
         isym・・・シンボル番号(コンパイラが付与するシンボルを識別するための番号。get_variable_symbol_info()と組み合わせて利用する。)
         reftype・・・シンボルに対して何をしているかを示す文字列。以下のタイプがある。
                     Address-Taken : アドレス取得(&)
