@@ -142,9 +142,10 @@ class Database:
         sql = f"""
         CREATE VIEW Syms
         AS
-        SELECT s.file, s.isym, s.name, s.addr, m.size, s.scope, s.sect, c.line, c.col
-        FROM {Symbol.__tablename__} INNER JOIN {Map.__tablename__} m ON s.addr = m.addr
-        INNER JOIN {Crossref.__tablename__} c ON (s.file = c.file) AND (s.isym = c.isym)
+        SELECT s.file, s.name, s.addr, m.size, s.scope, s.sect
+        FROM {Symbol.__tablename__} s
+        INNER JOIN {Crossref.__tablename__} c ON (s.file = c.file) AND (s.isym = c.isym) AND (c.reftype = "Definition")
+        INNER JOIN {Map.__tablename__} m ON s.addr = m.addr
         """
         return sql
 
@@ -153,7 +154,7 @@ class Database:
         sql = f"""
         CREATE VIEW bss
         AS
-        SELECT file, sect AS section, SUM(size) AS total_bss_size
+        SELECT file, SUM(size) AS total_bss_size
         FROM Syms
         WHERE sect = "Bss"
         GROUP BY file, sect
@@ -166,7 +167,7 @@ class Database:
         sql = f"""
         CREATE VIEW data
         AS
-        SELECT file, sect AS section, SUM(size) AS total_bss_size
+        SELECT file, SUM(size) AS total_bss_size
         FROM Syms
         WHERE sect = "Data"
         GROUP BY file, sect

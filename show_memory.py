@@ -29,27 +29,29 @@ def encoding_detect(fname):
     return detector.result["encoding"]
 
 
-if __name__ == '__main__':
-
-    logger.debug("start")
-    db = database.Database("test.sqlite3")
+def create_database(map_fname, dla_fname, db_name="test.sqlite3"):
+    db = database.Database(db_name)
     db.init()
     db.open_session()
 
     maps = []
     def cb_mapfile(item):
-        global db
-        global maps
+        nonlocal db
+        nonlocal maps
         maps.append(item)
         if len(maps) > 3000:
             db.add_maps(maps)
             db.commit()
             maps = []
 
+    mapfile.parse(map_fname, encoding=encoding_detect(map_fname), callback=cb_mapfile)
+    db.add_maps(maps)
+    db.commit()
+
     symbols = []
     def callback_symbol(item):
-        global db
-        global symbols
+        nonlocal db
+        nonlocal symbols
         symbols.append(item)
         if len(symbols) > 3000:
             db.add_symbols(symbols)
@@ -58,23 +60,23 @@ if __name__ == '__main__':
 
     crossrefs = []
     def callback_crossref(item):
-        global db
-        global crossrefs
+        nonlocal db
+        nonlocal crossrefs
         crossrefs.append(item)
         if len(crossrefs) > 3000:
             db.add_crossrefs(crossrefs)
             db.commit()
             crossrefs = []
 
-    fname = "map.map"
-
-    mapfile.parse(fname, encoding=encoding_detect(fname), callback=cb_mapfile)
-    db.add_maps(maps)
-    db.commit()
-
-    fname = "dmsdla.txt"
-    dlafile.parse(fname, encoding=encoding_detect(fname), callback_symbol=callback_symbol, callback_crossref=callback_crossref)
+    dlafile.parse(dla_fname, encoding=encoding_detect(dla_fname), callback_symbol=callback_symbol, callback_crossref=callback_crossref)
     db.add_symbols(symbols)
     db.add_crossrefs(crossrefs)
 
     db.close_sessoin()
+
+if __name__ == '__main__':
+    create_database("DMS_Sub_Appl_1.map", "dmsdla.txt")
+
+
+# In [8]: %time show_memory.create_database("DMS_Sub_Appl_1.map", "dmsdla.txt")
+# Wall time: 2min 39s
