@@ -21,8 +21,7 @@ def parse(fname, encoding="utf-8", callback=None, logger=None):
     callback : function
         合致した内容を受け取る関数を設定する。
         引数には以下のdictが設定される。
-        {"section": section, "addr": addr, "size":size, "sym":sym}
-        section : str,  addr : str,  size : int, sym : str
+        {"addr": int, "size":int}
      
     logger : logger
         デバッグログを出力するloggingモジュールのloggerインスタンス。
@@ -54,7 +53,7 @@ def parse(fname, encoding="utf-8", callback=None, logger=None):
     log = logger or selflogger
 
     # 利用する正規表現をコンパイルしておく
-    expr = re.compile(r"(?P<section>\S+?) +(?P<addr>[0-9A-Fa-f]{8})\+(?P<size>[0-9A-Fa-f]{6}) (?P<sym>\S+)")
+    expr = re.compile(r"(?P<sect>\S+?) +(?P<addr>[0-9A-Fa-f]{8})\+(?P<size>[0-9A-Fa-f]{6}) (?P<sym>\S+)")
 
     with open(fname, "r", encoding=encoding) as f:
         for s in f:
@@ -64,11 +63,11 @@ def parse(fname, encoding="utf-8", callback=None, logger=None):
             m = expr.search(s)
             if m:
                 # マッチしたものからセクション、アドレスなどを抜き出す
-                section = m.group("section")
+                sect = m.group("sect")
                 size = int(m.group("size"),16)
                 addr = int("0x" + m.group("addr"),16)
-                sym = m.group("sym")
-                ret = {"section":section, "addr": addr, "size":size, "sym":sym}
+                sym  = m.group("sym")
+                ret = {"sect":sect, "addr": addr, "size":size, "sym":sym}
                 
                 # sizeが0より大きいものをコールバックする 
                 if size > 0:
@@ -94,7 +93,7 @@ if __name__ == '__main__':
     
     # 結果を受け取るコールバック関数の定義
     def result(dic):
-        print("setion={} addr={}, size={}, symbol={}".format(dic["section"], dic["addr"], dic["size"], dic["sym"]))
+        print(dic)
     
     # 解析開始
     parse(args.file[0], result, logger)

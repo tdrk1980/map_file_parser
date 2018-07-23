@@ -24,9 +24,10 @@ class Map(Base):
     id = Column(Integer, primary_key=True)
     addr = Column(Integer)
     size = Column(Integer)
-
+    sect = Column(String)
+    sym = Column(String)
     def __repr__(self):
-        return "<Map(id={0}, addr={1}, size={2})>".format(self.id, self.addr, self.size)
+        return "<Map(id={0}, addr={1}, size={2}, sect={3}, sym={4})>".format(self.id, self.addr, self.size, self.sect, self.sym)
 
 
 class Symbol(Base):
@@ -103,27 +104,31 @@ class Database:
         if self.session:
             self.session.commit()
             self.session = None
-            self.log.info("session alreadyclosed.")
+            self.log.info("session already closed.")
         else:
             self.log.debug("ignored. already closed")
     
     def add_maps(self, maps=[]):
-        self.add_items(Map, maps)
+        return self.add_items(Map, maps)
 
     def add_symbols(self, symbols=[]):
-        self.add_items(Symbol, symbols)
+        return self.add_items(Symbol, symbols)
 
     def add_crossrefs(self, crossrefs=[]):
-        self.add_items(Crossref, crossrefs)
+        return self.add_items(Crossref, crossrefs)
     
     def add_items(self, class_, items=[]):
+        ret = False
         self.open_session()
         if self.session:
             items = [class_(**s) for s in items]
             self.session.add_all(items)
-            self.log.info(items)
+            self.log.debug(items)
+            ret = True
         else:
             self.log.warn("session not opened.")
+            ret = False
+        return ret
     
     def commit(self):
         if self.session:
