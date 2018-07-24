@@ -239,6 +239,18 @@ def parse(fname, encoding="utf-8", callback_symbol=None, callback_crossref=None,
     # loggerを設定(デフォルトは何も出力しない)
     log = logger or selflogger
 
+    if isinstance(callback_symbol, types.FunctionType) or isinstance(callback_symbol, types.MethodType):
+        pass
+    else:
+        log.error("callback_symbol should be FunctionType or Methodtype")
+        return
+
+    if isinstance(callback_crossref, types.FunctionType) or isinstance(callback_crossref, types.MethodType):
+        pass
+    else:
+        log.error("callback_crossref should be FunctionType or Methodtype")
+        return
+
     c_source_file_path = None
     with open(fname, "r", encoding=encoding) as f:
         cur_state = nxt_state = "init"
@@ -289,7 +301,7 @@ def parse(fname, encoding="utf-8", callback_symbol=None, callback_crossref=None,
                     sym = get_variable_symbol_info(ev["content_info"])
                     if sym:
                         symdic = {"file":c_source_file_path, "name":sym["name"], "addr": sym["addr"], "isym":sym["isym"], "scope": sym["scope"], "sect": sym["sect"]}
-                        callback_symbol(symdic) if isinstance(callback_symbol, types.FunctionType) else None
+                        callback_symbol(symdic)
                         log.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}, symdic={symdic}")
                     else:
                         log.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")
@@ -309,7 +321,7 @@ def parse(fname, encoding="utf-8", callback_symbol=None, callback_crossref=None,
                     cr = get_isym_reftype(ev["content_info"])
                     if cr:
                         crdic = {"file":c_source_file_path, "isym": cr["isym"], "reftype": cr["reftype"], "ifile": cr["file"], "line": cr["line"], "col": cr["col"]}
-                        callback_crossref(crdic) if isinstance(callback_crossref, types.FunctionType) else None
+                        callback_crossref(crdic)
                         log.info(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}, crdic={crdic}")
                     else:
                         log.debug(f"ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")

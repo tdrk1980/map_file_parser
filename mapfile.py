@@ -52,6 +52,12 @@ def parse(fname, encoding="utf-8", callback=None, logger=None):
     # loggerを設定(デフォルトは何も出力しない)
     log = logger or selflogger
 
+    if not isinstance(callback, types.FunctionType) or not isinstance(callback, types.MethodType):
+        pass
+    else:
+        log.error("callback should be FunctionType or MethodType")
+        return
+
     # 利用する正規表現をコンパイルしておく
     expr = re.compile(r"(?P<sect>\S+?) +(?P<addr>[0-9A-Fa-f]{8})\+(?P<size>[0-9A-Fa-f]{6}) (?P<sym>\S+)")
 
@@ -71,8 +77,7 @@ def parse(fname, encoding="utf-8", callback=None, logger=None):
                 
                 # sizeが0より大きいものをコールバックする 
                 if size > 0:
-                    callback(ret) if isinstance(callback, types.FunctionType) else None
-                    log.info(ret)
+                    callback(ret)
                 else:
                     log.debug("size <= 0, ignored !! : " + str(ret))
 

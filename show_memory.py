@@ -1,15 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from logging import basicConfig, getLogger, FileHandler, StreamHandler,NullHandler, DEBUG, INFO
-fmt = "%(asctime)s %(levelname)s %(name)s :%(message)s"
-basicConfig(level=DEBUG, format=fmt)
-
-logger = getLogger("show_memory")
-# handler = FileHandler("show_memory"+".log")
-# handler = StreamHandler() # StreamHandler()ならば、コンソール出力になる。
-handler = NullHandler()
-logger.addHandler(handler)
-logger.setLevel(INFO)
+logger = getLogger(__name__)
+logger.addHandler(NullHandler())
+logger.setLevel(DEBUG)
 logger.propagate = False
 
 import re
@@ -31,52 +25,63 @@ def encoding_detect(fname):
 
 def create_database(map_fname, dla_fname, db_name="test.sqlite3"):
     db = database.Database(db_name)
-    db.init()
-    db.open_session()
+    db.open()
 
-    maps = []
-    def cb_mapfile(item):
-        nonlocal db
-        nonlocal maps
-        maps.append(item)
-        if len(maps) > 3000:
-            db.add_maps(maps)
-            db.commit()
-            maps = []
-
-    mapfile.parse(map_fname, encoding=encoding_detect(map_fname), callback=cb_mapfile)
-    db.add_maps(maps)
-    db.commit()
-
-    symbols = []
-    def callback_symbol(item):
-        nonlocal db
-        nonlocal symbols
-        symbols.append(item)
-        if len(symbols) > 3000:
-            db.add_symbols(symbols)
-            db.commit()
-            symbols = []
-
-    crossrefs = []
-    def callback_crossref(item):
-        nonlocal db
-        nonlocal crossrefs
-        crossrefs.append(item)
-        if len(crossrefs) > 3000:
-            db.add_crossrefs(crossrefs)
-            db.commit()
-            crossrefs = []
-
-    dlafile.parse(dla_fname, encoding=encoding_detect(dla_fname), callback_symbol=callback_symbol, callback_crossref=callback_crossref)
-    db.add_symbols(symbols)
-    db.add_crossrefs(crossrefs)
-
-    db.close_sessoin()
+    mapfile.parse(map_fname, encoding=encoding_detect(map_fname), callback=db.cb_map)
+    dlafile.parse(dla_fname, encoding=encoding_detect(dla_fname), callback_symbol=db.cb_symbol, callback_crossref=db.cb_crossref)
+    
+    db.close()
 
 if __name__ == '__main__':
+    import time
+    start = time.time()
+
     create_database("map.map", "dla.txt")
 
-
+    elapsed_time = time.time() - start
+    print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
 # In [8]: %time show_memory.create_database("DMS_Sub_Appl_1.map", "dmsdla.txt")
 # Wall time: 2min 39s
+# elapsed_time:166.09351086616516[sec]
+
+
+# (base) D:\user\zf75944\python\map_file_parser>python show_memory.py
+# elapsed_time:295.36812257766724[sec]
+# self.maps = []
+# self.MAPS_COMMIT_LEN = 10000
+# self.symbols = []
+# self.SYMBOLS_COMMIT_LEN = 10000
+# self.crossrefs = []
+# self.CROSSREF_COMMIT_LEN = 20000
+# ↑メモリが定常的に50 MB
+
+
+# (base) D:\user\zf75944\python\map_file_parser>python show_memory.py
+# elapsed_time:357.6771683692932[sec]
+# self.maps = []
+# self.MAPS_COMMIT_LEN = 3000
+# self.symbols = []
+# self.SYMBOLS_COMMIT_LEN = 3000
+# self.crossrefs = []
+# self.CROSSREF_COMMIT_LEN = 10000
+# メモリは34MB
+
+# (base) D:\user\zf75944\python\map_file_parser>python show_memory.py
+# elapsed_time:307.20891785621643[sec]
+# self.maps = []
+# self.MAPS_COMMIT_LEN = 3000
+# self.symbols = []
+# self.SYMBOLS_COMMIT_LEN = 3000
+# self.crossrefs = []
+# self.CROSSREF_COMMIT_LEN = 20000
+# 27～49MB
+
+# (base) D:\user\zf75944\python\map_file_parser>python show_memory.py
+# elapsed_time:305.3802263736725[sec]
+# self.maps = []
+# self.MAPS_COMMIT_LEN = 3000
+# self.symbols = []
+# self.SYMBOLS_COMMIT_LEN = 3000
+# self.crossrefs = []
+# self.CROSSREF_COMMIT_LEN = 30000
+# 32～70MB

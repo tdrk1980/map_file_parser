@@ -13,8 +13,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
 from sqlalchemy.orm import sessionmaker
 
-
-
 Base = declarative_base()
 
 
@@ -59,11 +57,24 @@ class Crossref(Base):
         return "<Crossref(file={0}, isym={1}, reftype={2}, ifile={3}, line={4}, col={5})>".format(self.file, self.isym, self.reftype, self.ifile, self.line, self.col)
 
 class Database:
-    def __init__(self, db_fname, logger=None):
+    def __init__(self, db_fname, echo=False, logger=None):
         self.db_fname = db_fname
         self.engine = None
         self.session = None
         self.log = logger or selflogger
+
+        self.maps = []
+        self.MAPS_COMMIT_LEN = 10000
+
+        self.symbols = []
+        self.SYMBOLS_COMMIT_LEN = 10000
+
+        self.crossrefs = []
+        self.CROSSREF_COMMIT_LEN = 20000
+
+
+        self.init(echo=echo)
+
 
     def init(self,echo=False):
         self.engine = create_engine("sqlite:///{}".format(self.db_fname), echo=echo)
@@ -90,49 +101,86 @@ class Database:
         self.engine.execute(self.sql_rodata_view)
 
 
-    def open_session(self):
+    def open(self):
         if self.engine:
             if self.session :
-                self.log.debug("ignoted. session already opened.")
+                self.maps = []
+                self.symbols = []
+                self.crossrefs = []
+                self.log.debug("ignored. session already opened.")
             else:
                 self.session = sessionmaker(bind=self.engine)()
                 self.log.info("session opened.")
         else:
             self.log.warn("engine not found.")
     
-    def close_sessoin(self):
+    def close(self):
         if self.session:
-            self.session.commit()
+
+            self.commit_all()
+            self.maps=[]
+            self.symbols=[]
+            self.crossrefs=[]
+
+            self.session.close()
             self.session = None
-            self.log.info("session already closed.")
+
+            self.log.info("session closed.")
         else:
             self.log.debug("ignored. already closed")
     
-    def add_maps(self, maps=[]):
-        return self.add_items(Map, maps)
 
-    def add_symbols(self, symbols=[]):
-        return self.add_items(Symbol, symbols)
+    def cb_map(self, item):
+        self.maps.append(item)
+        if len(self.maps) > self.MAPS_COMMIT_LEN:
+            self.commit_maps()
+            self.maps = []
 
-    def add_crossrefs(self, crossrefs=[]):
-        return self.add_items(Crossref, crossrefs)
-    
-    def add_items(self, class_, items=[]):
-        ret = False
-        self.open_session()
+    def cb_symbol(self, item):
+        self.symbols.append(item)
+        if len(self.symbols) > self.SYMBOLS_COMMIT_LEN:
+            self.commit_symbols()
+            self.symbols = []
+
+    def cb_crossref(self, item):
+        self.crossrefs.append(item)
+        if len(self.crossrefs) > self.CROSSREF_COMMIT_LEN:
+            self.commit_crossrefs()
+            self.crossrefs = []
+ 
+    def commit_maps(self):
         if self.session:
-            items = [class_(**s) for s in items]
-            self.session.add_all(items)
-            self.log.debug(items)
-            ret = True
-        else:
-            self.log.warn("session not opened.")
-            ret = False
-        return ret
-    
-    def commit(self):
-        if self.session:
+            self.session.add_all([Map(**s) for s in self.maps])
+            self.session.flush()
             self.session.commit()
+            self.log.info("session committed (maps)")
+        else:
+            self.log.debug("ignoted. already closed")
+   
+    def commit_symbols(self):
+        if self.session:
+            self.session.add_all([Symbol(**s) for s in self.symbols])
+            self.session.flush()
+            self.session.commit()
+            self.log.info("session committed (symbols)")
+        else:
+            self.log.debug("ignoted. already closed")
+
+    def commit_crossrefs(self):
+        if self.session:
+            self.session.add_all([Crossref(**s) for s in self.crossrefs])
+            self.session.flush()
+            self.session.commit()
+            self.log.info("session committed (crossrefs)")
+        else:
+            self.log.debug("ignoted. already closed")
+
+
+    def commit_all(self):
+        if self.session:
+            self.commit_maps()
+            self.commit_symbols()
+            self.commit_crossrefs()
             self.log.info("session committed")
         else:
             self.log.debug("ignoted. already closed")
@@ -142,9 +190,9 @@ class Database:
         sql = f"""
         CREATE VIEW Syms
         AS
-        SELECT s.file, s.name, s.addr, m.size, s.scope, s.sect
+        SELECT s.file, s.name, s.addr, m.size, s.scope, s.sect, c.reftype
         FROM {Symbol.__tablename__} s
-        INNER JOIN {Crossref.__tablename__} c ON (s.file = c.file) AND (s.isym = c.isym) AND (c.reftype = "Definition")
+        INNER JOIN {Crossref.__tablename__} c ON (s.file = c.file) AND (s.isym = c.isym)
         INNER JOIN {Map.__tablename__} m ON s.addr = m.addr
         """
         return sql
@@ -154,11 +202,9 @@ class Database:
         sql = f"""
         CREATE VIEW bss
         AS
-        SELECT file, SUM(size) AS total_bss_size
+        SELECT file, name, size
         FROM Syms
-        WHERE sect = "Bss"
-        GROUP BY file, sect
-        ORDER BY SUM(size) DESC
+        WHERE sect = "Bss" AND reftype = "Definition"
         """
         return sql
 
@@ -167,11 +213,9 @@ class Database:
         sql = f"""
         CREATE VIEW data
         AS
-        SELECT file, SUM(size) AS total_bss_size
+        SELECT file, name, size
         FROM Syms
-        WHERE sect = "Data"
-        GROUP BY file, sect
-        ORDER BY SUM(size) DESC
+        WHERE sect = "Data" AND reftype = "Definition"
         """
         return sql
 
@@ -180,15 +224,12 @@ class Database:
         sql = """
         CREATE VIEW rodata
         AS
-        SELECT file, sect AS section, SUM(size) AS total_rodata_size
+        SELECT file, name, size
         FROM Syms
-        WHERE sect = "Data-In-Text"
-        GROUP BY file, sect
-        ORDER BY SUM(size) DESC
+        WHERE sect = "Data-In-Text"  AND reftype = "Definition"
+        ORDER BY file DESC
         """
         return sql
-
-
 
 
 if __name__ == '__main__':
