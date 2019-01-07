@@ -8,6 +8,7 @@ selflogger.propagate = False
 
 import re
 import types
+import tqdm
 
 def parse(fname, encoding="utf-8", callback=None, logger=None):
     r'''
@@ -62,7 +63,7 @@ def parse(fname, encoding="utf-8", callback=None, logger=None):
     expr = re.compile(r"(?P<sect>\S+?) +(?P<addr>[0-9A-Fa-f]{8})\+(?P<size>[0-9A-Fa-f]{6}) (?P<sym>\S+)")
 
     with open(fname, "r", encoding=encoding) as f:
-        for s in f:
+        for s in tqdm.tqdm(f):
             s = s.strip()
 
             # 正規表現による解析

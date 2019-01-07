@@ -4,6 +4,7 @@ from logging import getLogger, DEBUG, NullHandler, StreamHandler, FileHandler
 import re
 import types
 import pathlib
+import tqdm
 # import transitions # 将来的に利用するかも
 
 selflogger = getLogger(__name__)
@@ -255,7 +256,7 @@ def parse(fname, encoding="utf-8", callback_symbol=None, callback_crossref=None,
     with open(fname, "r", encoding=encoding) as f:
         cur_state = nxt_state = "init"
         
-        for i, s in enumerate(f, 1):
+        for i, s in tqdm.tqdm(enumerate(f, 1)):
             cur_state = nxt_state
             ev = parse_line(s)
             log.debug(f"{i}:{s} ==> ev={ev}, cur_state={cur_state}, nxt_state={nxt_state}")

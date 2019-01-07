@@ -33,6 +33,7 @@ def create_database(map_fname, dla_fname, db_name="test.sqlite3"):
     db.close()
 
 if __name__ == '__main__':
+    import pandas as pd
     import time
     start = time.time()
 
@@ -40,6 +41,9 @@ if __name__ == '__main__':
 
     elapsed_time = time.time() - start
     print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+    
+    
+    
 # In [8]: %time show_memory.create_database("DMS_Sub_Appl_1.map", "dmsdla.txt")
 # Wall time: 2min 39s
 # elapsed_time:166.09351086616516[sec]

@@ -246,11 +246,11 @@ if __name__ == '__main__':
     logger.setLevel(DEBUG)
     logger.propagate = False
     
-    db = Database("test.sqlite3")
+    # db = Database("test.sqlite3")
     
-    db.init(echo=True)
-    db.add_maps([{"addr":12345, "size":11}])
-    db.add_maps([{"addr":45678, "size":12123}])
-    db.add_symbols([{"file":"aaaa.c", "isym":12334, "name":"system_manager_get", "addr":12334, "scope":"extern", "sect":".bss"}])
-    db.add_crossrefs([{"file":"aaaa.c", "isym":12334, "reftype":"definition", "ifile":1, "line":1111, "col":2222}])
-    db.commit()
+    # db.init(echo=True)
+    # db.add_maps([{"addr":12345, "size":11}])
+    # db.add_maps([{"addr":45678, "size":12123}])
+    # db.add_symbols([{"file":"aaaa.c", "isym":12334, "name":"system_manager_get", "addr":12334, "scope":"extern", "sect":".bss"}])
+    # db.add_crossrefs([{"file":"aaaa.c", "isym":12334, "reftype":"definition", "ifile":1, "line":1111, "col":2222}])
+    # db.commit()
