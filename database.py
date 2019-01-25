@@ -202,9 +202,9 @@ class Database:
         sql = f"""
         CREATE VIEW bss
         AS
-        SELECT file, name, size
+        SELECT DISTINCT file, name, size
         FROM Syms
-        WHERE sect = "Bss" AND reftype = "Definition"
+        WHERE sect = "Bss" AND (reftype = "Definition" OR reftype = "Declaration")
         """
         return sql
 
@@ -213,7 +213,7 @@ class Database:
         sql = f"""
         CREATE VIEW data
         AS
-        SELECT file, name, size
+        SELECT DISTINCT file, name, size
         FROM Syms
         WHERE sect = "Data" AND reftype = "Definition"
         """
@@ -224,9 +224,9 @@ class Database:
         sql = """
         CREATE VIEW rodata
         AS
-        SELECT file, name, size
+        SELECT DISTINCT file, name, size
         FROM Syms
-        WHERE sect = "Data-In-Text"  AND reftype = "Definition"
+        WHERE sect = "Data-In-Text" AND reftype = "Definition"
         ORDER BY file DESC
         """
         return sql
